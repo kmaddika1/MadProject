@@ -1,144 +1,186 @@
 import 'package:flutter/material.dart';
-import 'models/task.dart'; // Import the task model
+import 'dart:ui' show lerpDouble;
+void main() => runApp(CalculatorApp());
 
-void main() {
-  runApp(TaskManagementApp());
-}
-
-class TaskManagementApp extends StatelessWidget {
+class CalculatorApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Task Management App',
+      debugShowCheckedModeBanner: false,
+      title: 'Calculator',
       theme: ThemeData(
+        brightness: Brightness.dark,
         primarySwatch: Colors.blue,
       ),
-      home: TaskListScreen(), // The main screen of the app
+      home: CalculatorHome(),
     );
   }
 }
 
-class TaskListScreen extends StatefulWidget {
+class CalculatorHome extends StatefulWidget {
   @override
-  _TaskListScreenState createState() => _TaskListScreenState();
+  _CalculatorHomeState createState() => _CalculatorHomeState();
 }
 
-class _TaskListScreenState extends State<TaskListScreen> {
-  final List<Task> _tasks = []; // List of tasks
-  final TextEditingController _taskController = TextEditingController(); // Controller for the task input
-  String _selectedPriority = 'Medium'; // Default priority
+class _CalculatorHomeState extends State<CalculatorHome> {
+  String _displayText = '0';  // Display text for the screen
+  double _firstNum = 0;
+  double _secondNum = 0;
+  String _operator = '';
+  bool _decimalEntered = false;
 
-  // Method to add a new task
-  void _addTask() {
-    if (_taskController.text.isEmpty) return;
-
+  // Function to handle number input
+  void _numClick(String text) {
     setState(() {
-      _tasks.add(Task(
-        name: _taskController.text,
-        priority: _selectedPriority,
-      ));
-      _taskController.clear(); // Clear the text field after adding the task
-      _sortTasksByPriority(); // Sort tasks by priority
+      if (_displayText == '0') {
+        _displayText = text;
+      } else {
+        _displayText += text;
+      }
     });
   }
 
-  // Method to toggle the completion status of a task
-  void _toggleTaskCompletion(int index) {
+  // Function to handle operator input
+  void _operatorClick(String op) {
     setState(() {
-      _tasks[index].isCompleted = !_tasks[index].isCompleted;
+      _firstNum = double.parse(_displayText);
+      _operator = op;
+      _displayText = '0';
+      _decimalEntered = false; // Reset decimal flag for the second number
     });
   }
 
-  // Method to delete a task
-  void _deleteTask(int index) {
+  // Function to calculate the result
+  void _calculate() {
     setState(() {
-      _tasks.removeAt(index);
+      _secondNum = double.parse(_displayText);
+
+      if (_operator == '+') {
+        _displayText = (_firstNum + _secondNum).toString();
+      } else if (_operator == '-') {
+        _displayText = (_firstNum - _secondNum).toStringAsFixed(2); // Round result
+      } else if (_operator == '*') {
+        _displayText = (_firstNum * _secondNum).toString();
+      } else if (_operator == '/') {
+        if (_secondNum != 0) {
+          _displayText = (_firstNum / _secondNum).toString();
+        } else {
+          _displayText = "Error"; // Handle divide by zero
+        }
+      }
+
+      // Reset operator and decimal flag after calculation
+      _operator = '';
+      _decimalEntered = false;
     });
   }
 
-  // Method to sort tasks by priority (High, Medium, Low)
-  void _sortTasksByPriority() {
-    _tasks.sort((a, b) => _comparePriority(a.priority, b.priority));
+  // Function to handle the "Clear" button
+  void _clear() {
+    setState(() {
+      _displayText = '0';
+      _firstNum = 0;
+      _secondNum = 0;
+      _operator = '';
+      _decimalEntered = false;
+    });
   }
 
-  int _comparePriority(String priorityA, String priorityB) {
-    const priorities = ['High', 'Medium', 'Low'];
-    return priorities.indexOf(priorityA).compareTo(priorities.indexOf(priorityB));
+  // Function to handle decimal input
+  void _decimalClick() {
+    setState(() {
+      if (!_decimalEntered) {
+        _displayText += '.';
+        _decimalEntered = true;
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Task Management'),
+        title: Text('Calculator'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: <Widget>[
-            Row(
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: <Widget>[
+          // Display area
+          Container(
+            padding: EdgeInsets.all(20),
+            alignment: Alignment.centerRight,
+            child: Text(
+              _displayText,
+              style: TextStyle(fontSize: 60, fontWeight: FontWeight.bold),
+            ),
+          ),
+          Divider(),
+
+          // Button layout using Rows and Columns
+          Expanded(
+            child: Column(
               children: <Widget>[
-                Expanded(
-                  child: TextField(
-                    controller: _taskController,
-                    decoration: InputDecoration(
-                      labelText: 'Enter task name',
-                    ),
-                  ),
-                ),
-                SizedBox(width: 10),
-                DropdownButton<String>(
-                  value: _selectedPriority,
-                  onChanged: (String? newValue) {
-                    setState(() {
-                      _selectedPriority = newValue!;
-                    });
-                  },
-                  items: <String>['High', 'Medium', 'Low']
-                      .map<DropdownMenuItem<String>>((String value) {
-                    return DropdownMenuItem<String>(
-                      value: value,
-                      child: Text(value),
-                    );
-                  }).toList(),
-                ),
-                ElevatedButton(
-                  onPressed: _addTask,
-                  child: Text('Add'),
-                ),
+                _buildButtonRow(['7', '8', '9', '/']),
+                _buildButtonRow(['4', '5', '6', '*']),
+                _buildButtonRow(['1', '2', '3', '-']),
+                _buildButtonRow(['0', '.', '=', '+']),
+                _buildButtonRow(['Clear'], isSingleRow: true, backgroundColor: Colors.redAccent),
               ],
             ),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _tasks.length,
-                itemBuilder: (context, index) {
-                  final task = _tasks[index];
-                  return ListTile(
-                    leading: Checkbox(
-                      value: task.isCompleted,
-                      onChanged: (bool? value) {
-                        _toggleTaskCompletion(index);
-                      },
-                    ),
-                    title: Text(
-                      task.name,
-                      style: TextStyle(
-                        decoration: task.isCompleted
-                            ? TextDecoration.lineThrough
-                            : TextDecoration.none,
-                      ),
-                    ),
-                    subtitle: Text('Priority: ${task.priority}'),
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      onPressed: () => _deleteTask(index),
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Function to build a row of buttons
+  Widget _buildButtonRow(List<String> buttons, {bool isSingleRow = false, Color backgroundColor = Colors.blueAccent}) {
+    return Expanded(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: buttons.map((text) {
+          return isSingleRow 
+            ? Expanded(
+                flex: 4,  // Stretch single button across the row
+                child: _buildButton(text, backgroundColor: backgroundColor),
+              )
+            : Expanded(
+                child: _buildButton(text, backgroundColor: backgroundColor),
+              );
+        }).toList(),
+      ),
+    );
+  }
+
+  // Function to build individual buttons with cleaner UI
+  Widget _buildButton(String text, {Color backgroundColor = Colors.blueAccent}) {
+    return Container(
+      margin: EdgeInsets.all(5),
+      child: ElevatedButton(
+        onPressed: () {
+          if (text == 'Clear') {
+            _clear();
+          } else if (text == '=') {
+            _calculate();
+          } else if (text == '+' || text == '-' || text == '*' || text == '/') {
+            _operatorClick(text);
+          } else if (text == '.') {
+            _decimalClick();
+          } else {
+            _numClick(text);
+          }
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: backgroundColor,  // Button background color
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: EdgeInsets.all(20),
+          shadowColor: Colors.black,
+        ),
+        child: Text(
+          text,
+          style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
         ),
       ),
     );
